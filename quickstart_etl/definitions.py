@@ -35,7 +35,7 @@ LETTER_PARTITIONS = StaticPartitionsDefinition(["A", "B", "C"])
 @asset(
     partitions_def=LETTER_PARTITIONS,
 )
-def create_partitions_data(context: AssetExecutionContext) -> str:
+def create_partitions_data(context: AssetExecutionContext) -> Output[str]:
     letter = context.partition_key
     context.log.info(f"Creating partition data for {letter}")
     return Output(
