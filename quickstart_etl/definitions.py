@@ -4,6 +4,7 @@ from dagster import AssetExecutionContext
 from dagster import Definitions
 from dagster import Output
 from dagster import ScheduleDefinition
+from dagster import MaterializeResult
 from dagster import asset
 from dagster import define_asset_job
 from dagster import graph_asset
@@ -37,10 +38,10 @@ LETTER_PARTITIONS = StaticPartitionsDefinition(["A", "B", "C"])
 )
 def create_partitions_data(context: AssetExecutionContext) -> Output[str]:
     letter = context.partition_key
-    context.log.info(f"Creating partition data for {letter}")
+    context.log.info(f"Creating partition data for {letter}!")
     return Output(
         value=letter,
-        metadata={"letter": letter},
+        metadata={"letter": letter, "foo": "bar"},
     )
 
 
@@ -48,11 +49,15 @@ def create_partitions_data(context: AssetExecutionContext) -> Output[str]:
     deps=[create_partitions_data],
 )
 def combine_partitions(context: AssetExecutionContext, create_partitions_data: dict[str, str]) -> None:
-    context.log.info(f"Combining {len(create_partitions_data)} partitions")
+    context.log.info(f"Combining {len(create_partitions_data)} partitions!!!")
     combined_data = "".join(create_partitions_data.values())
     context.log.info(combined_data)
-
-    return None
+    
+    yield MaterializeResult(
+        metadata={
+            "dagster/row_count": 5,
+        },
+    )
 
 
 
