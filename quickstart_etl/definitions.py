@@ -2,6 +2,7 @@ from pathlib import Path
 
 from dagster import AssetExecutionContext
 from dagster import Definitions
+from dagster import Output
 from dagster import ScheduleDefinition
 from dagster import asset
 from dagster import define_asset_job
@@ -37,7 +38,10 @@ LETTER_PARTITIONS = StaticPartitionsDefinition(["A", "B", "C"])
 def create_partitions_data(context: AssetExecutionContext) -> str:
     letter = context.partition_key
     context.log.info(f"Creating partition data for {letter}")
-    return letter
+    return Output(
+        value=letter,
+        metadata={"letter": letter},
+    )
 
 
 @asset(
@@ -49,6 +53,8 @@ def combine_partitions(context: AssetExecutionContext, create_partitions_data: d
     context.log.info(combined_data)
 
     return None
+
+
 
 
 my_assets = with_source_code_references(
