@@ -1,22 +1,21 @@
 from pathlib import Path
 
-from dagster import (
-    Definitions,
-    ScheduleDefinition,
-    define_asset_job,
-    graph_asset,
-    link_code_references_to_git,
-    load_assets_from_package_module,
-    op,
-    with_source_code_references,
-)
+from dagster import AssetExecutionContext
+from dagster import Definitions
+from dagster import ScheduleDefinition
+from dagster import asset
+from dagster import define_asset_job
+from dagster import graph_asset
+from dagster import link_code_references_to_git
+from dagster import load_assets_from_package_module
+from dagster import op
+from dagster import with_source_code_references
 from dagster._core.definitions.metadata.source_code import AnchorBasedFilePathMapping
+from dagster._core.definitions.partition import StaticPartitionsDefinition
 
 from . import assets
 
-daily_refresh_schedule = ScheduleDefinition(
-    job=define_asset_job(name="all_assets_job"), cron_schedule="0 0 * * *"
-)
+daily_refresh_schedule = ScheduleDefinition(job=define_asset_job(name="all_assets_job"), cron_schedule="0 0 * * *")
 
 
 @op
@@ -29,9 +28,34 @@ def my_asset():
     return foo_op()
 
 
+LETTER_PARTITIONS = StaticPartitionsDefinition(["A", "B", "C"])
+
+
+@asset(
+    partitions_def=LETTER_PARTITIONS,
+)
+def create_partitions_data(context: AssetExecutionContext) -> str:
+    letter = context.partition_key
+    context.log.info(f"Creating partition data for {letter}")
+    return letter
+
+
+@asset(
+    deps=[create_partitions_data],
+)
+def combine_partitions(context: AssetExecutionContext, create_partitions_data: dict[str, str]) -> None:
+    context.log.info(f"Combining {len(create_partitions_data)} partitions")
+    combined_data = "".join(create_partitions_data.values())
+    context.log.info(combined_data)
+
+    return None
+
+
 my_assets = with_source_code_references(
     [
         my_asset,
+        create_partitions_data,
+        combine_partitions,
         *load_assets_from_package_module(assets),
     ]
 )
